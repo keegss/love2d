@@ -1,39 +1,80 @@
 function love.load()
-	arrow = {}
-	arrow.x = 200
-	arrow.y = 200
-	arrow.speed = 300
-	arrow.angle = 0
-	arrow.image = love.graphics.newImage("arrow_right.png")
-	arrow.origin_x = arrow.image:getWidth() / 2
-	arrow.origin_y = arrow.image:getHeight() / 2
+	image = love.graphics.newImage("tileset.png")
+
+	local image_width = image:getWidth()
+	local image_height = image:getHeight()
+
+	width = (image_width / 3) - 2
+	height = (image_height / 2) - 2
+
+	quads = {}
+
+	for i = 0, 1 do
+		for j = 0, 2 do
+			table.insert(
+				quads,
+				love.graphics.newQuad(
+					1 + j * (width + 2),
+					1 + i * (height + 2),
+					width,
+					height,
+					image_width,
+					image_height
+				)
+			)
+		end
+	end
+
+	tilemap = {
+		{ 1, 6, 6, 2, 1, 6, 6, 2 },
+		{ 3, 0, 0, 4, 5, 0, 0, 3 },
+		{ 3, 0, 0, 0, 0, 0, 0, 3 },
+		{ 4, 2, 0, 0, 0, 0, 1, 5 },
+		{ 1, 5, 0, 0, 0, 0, 4, 2 },
+		{ 3, 0, 0, 0, 0, 0, 0, 3 },
+		{ 3, 0, 0, 1, 2, 0, 0, 3 },
+		{ 4, 6, 6, 5, 4, 6, 6, 5 },
+	}
+
+	player = {
+		image = love.graphics.newImage("player.png"),
+		tile_x = 2,
+		tile_y = 2,
+	}
 end
 
-function love.update(dt)
-	mouse_x, mouse_y = love.mouse.getPosition()
-	arrow.angle = math.atan2(mouse_y - arrow.y, mouse_x - arrow.x)
-	angle = math.atan2(mouse_y - arrow.y, mouse_x - arrow.x)
-	cos = math.cos(angle)
-	sin = math.sin(angle)
+function isEmpty(x, y)
+	return tilemap[y][x] == 0
+end
 
-	local distance = getDistance(mouse_x, mouse_y, arrow.x, arrow.y)
+function love.keypressed(key)
+	local x = player.tile_x
+	local y = player.tile_y
 
-	if distance > 50 then
-		arrow.x = arrow.x + arrow.speed * cos * dt
-		arrow.y = arrow.y + arrow.speed * sin * dt
+	if key == "left" then
+		x = x - 1
+	elseif key == "right" then
+		x = x + 1
+	elseif key == "up" then
+		y = y - 1
+	elseif key == "down" then
+		y = y + 1
+	end
+
+	if isEmpty(x, y) then
+		player.tile_x = x
+		player.tile_y = y
 	end
 end
 
 function love.draw()
-	love.graphics.draw(arrow.image, arrow.x, arrow.y, arrow.angle, 1, 1, arrow.origin_x, arrow.origin_y)
-	love.graphics.circle("fill", mouse_x, mouse_y, 5)
-end
+	for i, row in ipairs(tilemap) do
+		for j, tile in ipairs(row) do
+			if tile ~= 0 then
+				love.graphics.draw(image, quads[tile], j * width, i * height)
+			end
+		end
+	end
 
-function getDistance(x1, y1, x2, y2)
-	local h_distance = x1 - x2
-	local v_distance = y1 - y2
-
-	local a = h_distance ^ 2
-	local b = v_distance ^ 2
-	return math.sqrt(a + b)
+	love.graphics.draw(player.image, player.tile_x * width, player.tile_y * height)
 end
