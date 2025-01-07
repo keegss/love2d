@@ -1,103 +1,109 @@
-local TILE_WIDTH, TILE_HEIGHT
+function saveGame()
+	data = {}
+	data.player = {
+		x = player.x,
+		y = player.y,
+		size = player.size,
+	}
 
-function love.load()
-	loadAssets()
-	initializeTilemap()
-	initializePlayer()
+	data.coins = {}
+	for i, v in ipairs(coins) do
+		data.coins[i] = { x = v.x, y = v.y }
+	end
+
+	serialized = lume.serialize(data)
+	love.filesystem.write("savedata.txt", serialized)
 end
 
-function loadAssets()
-	song = love.audio.newSource("song.ogg", "stream")
-	song:setLooping(true)
-	song:play()
+function love.load()
+	lume = require("lume")
+	player = {
+		x = 100,
+		y = 100,
+		size = 25,
+		image = love.graphics.newImage("face.png"),
+	}
 
-	sfx = love.audio.newSource("sfx.ogg", "static")
+	coins = {}
 
-	image = love.graphics.newImage("tileset.png")
+	if love.filesystem.getInfo("savedata.txt") then
+		file = love.filesystem.read("savedata.txt")
+		data = lume.deserialize(file)
 
-	local image_width = image:getWidth()
-	local image_height = image:getHeight()
+		player.x = data.player.x
+		player.y = data.player.y
+		player.size = data.player.size
 
-	TILE_WIDTH = (image_width / 3) - 2
-	TILE_HEIGHT = (image_height / 2) - 2
-
-	quads = {}
-
-	for i = 0, 1 do
-		for j = 0, 2 do
-			table.insert(
-				quads,
-				love.graphics.newQuad(
-					1 + j * (TILE_WIDTH + 2),
-					1 + i * (TILE_HEIGHT + 2),
-					TILE_WIDTH,
-					TILE_HEIGHT,
-					image_width,
-					image_height
-				)
-			)
+		for i, v in ipairs(data.coins) do
+			table.insert(coins, {
+				x = v.x,
+				y = v.y,
+				size = 10,
+				image = love.graphics.newImage("dollar.png"),
+			})
+		end
+	else
+		for i = 1, 25 do
+			table.insert(coins, {
+				x = love.math.random(50, 650),
+				y = love.math.random(50, 450),
+				size = 10,
+				image = love.graphics.newImage("dollar.png"),
+			})
 		end
 	end
 end
 
-function initializeTilemap()
-	tilemap = {
-		{ 1, 6, 6, 2, 1, 6, 6, 2 },
-		{ 3, 0, 0, 4, 5, 0, 0, 3 },
-		{ 3, 0, 0, 0, 0, 0, 0, 3 },
-		{ 4, 2, 0, 0, 0, 0, 1, 5 },
-		{ 1, 5, 0, 0, 0, 0, 4, 2 },
-		{ 3, 0, 0, 0, 0, 0, 0, 3 },
-		{ 3, 0, 0, 1, 2, 0, 0, 3 },
-		{ 4, 6, 6, 5, 4, 6, 6, 5 },
-	}
-end
-
-function initializePlayer()
-	player = {
-		image = love.graphics.newImage("player.png"),
-		tile_x = 2,
-		tile_y = 2,
-	}
-end
-
-function isEmpty(x, y)
-	return tilemap[y] and tilemap[y][x] == 0
-end
-
 function love.keypressed(key)
-	if key == "space" then
-		sfx:play()
-		return
+	if key == "f1" then
+		saveGame()
+	elseif key == "f2" then
+		love.filesystem.remove("savedata.txt")
+		love.event.quit("restart")
+	end
+end
+
+function checkCollision(p1, p2)
+	local distance = math.sqrt((p1.x - p2.x) ^ 2 + (p1.y - p2.y) ^ 2)
+	return distance < p1.size + p2.size
+end
+
+function love.update(dt)
+	if love.keyboard.isDown("left") then
+		player.x = player.x - 200 * dt
+	elseif love.keyboard.isDown("right") then
+		player.x = player.x + 200 * dt
 	end
 
-	local x = player.tile_x
-	local y = player.tile_y
-
-	if key == "left" then
-		x = x - 1
-	elseif key == "right" then
-		x = x + 1
-	elseif key == "up" then
-		y = y - 1
-	elseif key == "down" then
-		y = y + 1
+	if love.keyboard.isDown("up") then
+		player.y = player.y - 200 * dt
+	elseif love.keyboard.isDown("down") then
+		player.y = player.y + 200 * dt
 	end
 
-	if isEmpty(x, y) then
-		player.tile_x = x
-		player.tile_y = y
+	for i = #coins, 1, -1 do
+		if checkCollision(player, coins[i]) then
+			table.remove(coins, i)
+			player.size = player.size + 1
+		end
 	end
 end
 
 function love.draw()
-	for i, row in ipairs(tilemap) do
-		for j, tile in ipairs(row) do
-			if tile ~= 0 then
-				love.graphics.draw(image, quads[tile], j * TILE_WIDTH, i * TILE_HEIGHT)
-			end
-		end
-	end
+	love.graphics.circle("line", player.x, player.y, player.size)
+	love.graphics.draw(
+		player.image,
+		player.x,
+		player.y,
+		0,
+		1,
+		1,
+		player.image:getWidth() / 2,
+		player.image:getHeight() / 2
+	)
 
-	love.graphics.draw(player.image, player.tile_x * TILE_WIDTH, player.tile_y * TILE_HEIGHT)
+	for _, v in ipairs(coins) do
+		love.graphics.circle("line", v.x, v.y, v.size)
+		love.graphics.draw(v.image, v.x, v.y, 0, 1, 1, v.image:getWidth() / 2, v.image:getHeight() / 2)
+	end
 end
