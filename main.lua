@@ -16,6 +16,10 @@ function saveGame()
 end
 
 function love.load()
+	shakeDuration = 0
+	shakeWait = 0
+	shakeOffset = { x = 0, y = 0 }
+	score = 0
 	lume = require("lume")
 	player = {
 		x = 100,
@@ -69,6 +73,16 @@ function checkCollision(p1, p2)
 end
 
 function love.update(dt)
+	if shakeDuration > 0 then
+		shakeDuration = shakeDuration - dt
+		if shakeWait > 0 then
+			shakeWait = shakeWait - dt
+		else
+			shakeOffset.x = love.math.random(-5, 5)
+			shakeOffset.y = love.math.random(-5, 5)
+			shakeWait = 0.05
+		end
+	end
 	if love.keyboard.isDown("left") then
 		player.x = player.x - 200 * dt
 	elseif love.keyboard.isDown("right") then
@@ -85,11 +99,18 @@ function love.update(dt)
 		if checkCollision(player, coins[i]) then
 			table.remove(coins, i)
 			player.size = player.size + 1
+			score = score + 1
+			shakeDuration = 0.3
 		end
 	end
 end
 
 function love.draw()
+	love.graphics.push()
+	love.graphics.translate(-player.x + 400, -player.y + 300)
+	if shakeDuration > 0 then
+		love.graphics.translate(shakeOffset.x, shakeOffset.y)
+	end
 	love.graphics.circle("line", player.x, player.y, player.size)
 	love.graphics.draw(
 		player.image,
@@ -106,4 +127,6 @@ function love.draw()
 		love.graphics.circle("line", v.x, v.y, v.size)
 		love.graphics.draw(v.image, v.x, v.y, 0, 1, 1, v.image:getWidth() / 2, v.image:getHeight() / 2)
 	end
+	love.graphics.pop()
+	love.graphics.print(score, 10, 10)
 end
